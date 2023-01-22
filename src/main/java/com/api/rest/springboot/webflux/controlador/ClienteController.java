@@ -109,4 +109,19 @@ public class ClienteController {
         });
     }
 
+    @PutMapping("/{id}")
+    public Mono<ResponseEntity<Cliente>> editarCliente(@RequestBody Cliente cliente, @PathVariable String id) {
+        return service.findById(id).flatMap(c -> {
+            c.setNombre(cliente.getNombre());
+            c.setApellido(cliente.getApellido());
+            c.setEdad(cliente.getEdad());
+            c.setSueldo(cliente.getSueldo());
+
+            return service.save(c);
+        }).map(c -> ResponseEntity.created(URI.create("/api/clientes/".concat(c.getId())))
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .body(c)
+        ).defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+
 }
