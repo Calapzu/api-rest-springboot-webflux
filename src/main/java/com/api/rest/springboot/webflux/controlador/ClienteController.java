@@ -7,10 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
@@ -34,10 +31,27 @@ public class ClienteController {
                 .replace(":", "")
                 .replace("//", ""));
 
-        return file.transferTo(new File(path + cliente.getFoto())).then(service.save(cliente))
-                .map(c -> ResponseEntity.created(URI.create("api/clientes".concat(c.getId()))).contentType(MediaType.APPLICATION_JSON_UTF8)
+        return file.transferTo(new File(path + cliente.getFoto()))
+                .then(service.save(cliente))
+                .map(c -> ResponseEntity.created(URI.create("api/clientes".concat(c.getId())))
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
                         .body(c));
 
+    }
+
+    @PostMapping("/upload/{id}")
+    public Mono<ResponseEntity<Cliente>> subirFoto(@PathVariable String id, @RequestPart FilePart file){
+        return service.findById(id).flatMap(c -> {
+            c.setFoto(UUID.randomUUID().toString() + "-" + file.filename()
+                    .replace(" ", "")
+                    .replace(":", "")
+                    .replace("//","")
+            );
+
+            return file.transferTo(new File(path + c.getFoto())).then(service.save(c));
+
+        }).map(c -> ResponseEntity.ok(c))
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
 
