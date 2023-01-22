@@ -4,15 +4,21 @@ import com.api.rest.springboot.webflux.documentos.Cliente;
 import com.api.rest.springboot.webflux.servicios.ClienteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.support.WebExchangeBindException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.validation.Valid;
 import java.io.File;
 import java.net.URI;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -34,7 +40,7 @@ public class ClienteController {
 
         return file.transferTo(new File(path + cliente.getFoto()))
                 .then(service.save(cliente))
-                .map(c -> ResponseEntity.created(URI.create("api/clientes".concat(c.getId())))
+                .map(c -> ResponseEntity.created(URI.create("api/clientes/".concat(c.getId())))
                         .contentType(MediaType.APPLICATION_JSON_UTF8)
                         .body(c));
 
@@ -73,5 +79,34 @@ public class ClienteController {
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
+    @PostMapping
+    public Mono<ResponseEntity<Map<String, Object>>> guardarCliente(@Valid @RequestBody Mono<Cliente> monoCliente) {
+        Map<String, Object> respuesta = new HashMap<>();
+
+        return monoCliente.flatMap(cliente -> {
+            return service.save(cliente)
+                    .map(c -> {
+                        respuesta.put("cliente", c);
+                        respuesta.put("mensaje", "cliente guardado con exito");
+                        respuesta.put("timestamp", new Date());
+                        return ResponseEntity.created(URI.create("api/clientes/".concat(c.getId())))
+                                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                                .body(respuesta);
+                    });
+        }).onErrorResume(t -> {
+            return Mono.just(t).cast(WebExchangeBindException.class)
+                    .flatMap(e -> Mono.just(e.getFieldErrors()))
+                    .flatMapMany(Flux::fromIterable)
+                    .map(fieldError -> "El campo : " + fieldError.getField() + " " + fieldError.getDefaultMessage())
+                    .collectList()
+                    .flatMap(list -> {
+                        respuesta.put("errors", list);
+                        respuesta.put("timestamp", new Date());
+                        respuesta.put("status", HttpStatus.BAD_REQUEST.value());
+
+                        return Mono.just(ResponseEntity.badRequest().body(respuesta));
+                    });
+        });
+    }
 
 }
