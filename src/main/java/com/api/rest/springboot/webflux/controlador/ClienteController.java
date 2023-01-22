@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
@@ -40,17 +41,35 @@ public class ClienteController {
     }
 
     @PostMapping("/upload/{id}")
-    public Mono<ResponseEntity<Cliente>> subirFoto(@PathVariable String id, @RequestPart FilePart file){
+    public Mono<ResponseEntity<Cliente>> subirFoto(@PathVariable String id, @RequestPart FilePart file) {
         return service.findById(id).flatMap(c -> {
-            c.setFoto(UUID.randomUUID().toString() + "-" + file.filename()
-                    .replace(" ", "")
-                    .replace(":", "")
-                    .replace("//","")
-            );
+                    c.setFoto(UUID.randomUUID().toString() + "-" + file.filename()
+                            .replace(" ", "")
+                            .replace(":", "")
+                            .replace("//", "")
+                    );
 
-            return file.transferTo(new File(path + c.getFoto())).then(service.save(c));
+                    return file.transferTo(new File(path + c.getFoto())).then(service.save(c));
 
-        }).map(c -> ResponseEntity.ok(c))
+                }).map(c -> ResponseEntity.ok(c))
+                .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping
+    public Mono<ResponseEntity<Flux<Cliente>>> listarClientes() {
+        return Mono.just(
+                ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
+                        .body(service.findAll())
+        );
+    }
+
+    @GetMapping("/{id}")
+    public Mono<ResponseEntity<Cliente>> verDetallesDelCliente(@PathVariable String id) {
+        return service.findById(id).map(c -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
+                        .body(c)
+                )
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
