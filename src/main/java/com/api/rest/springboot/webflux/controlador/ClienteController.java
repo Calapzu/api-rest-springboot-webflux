@@ -4,6 +4,7 @@ import com.api.rest.springboot.webflux.documentos.Cliente;
 import com.api.rest.springboot.webflux.servicios.ClienteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/clientes")
+@RequestMapping("/api/clients")
 public class ClienteController {
 
     @Autowired
@@ -122,6 +123,13 @@ public class ClienteController {
                 .contentType(MediaType.APPLICATION_JSON_UTF8)
                 .body(c)
         ).defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public Mono<ResponseEntity<Void>> eliminarCliente(@PathVariable String id) {
+        return service.findById(id).flatMap(c -> {
+            return service.delete(c).then(Mono.just(new ResponseEntity<Void>(HttpStatus.NO_CONTENT)));
+        }).defaultIfEmpty(new ResponseEntity<Void>(HttpStatus.NOT_FOUND));
     }
 
 }

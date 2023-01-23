@@ -1,10 +1,12 @@
 package com.api.rest.springboot.webflux.servicios;
 
 import com.api.rest.springboot.webflux.documentos.Cliente;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-@Service
+
+
 public interface ClienteService  {
 
     public Flux<Cliente> findAll();
